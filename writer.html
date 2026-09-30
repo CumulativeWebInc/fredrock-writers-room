@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FredRock Writers Room — The Room</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/snowfall-template.js"></script>
+<script src="js/coach.js"></script>
+<script src="js/tts.js"></script>
+<script src="js/onboard.js"></script>
+</head>
+<body>
+
+<header class="brand-bar">
+  <div class="kicker">Cumulative Web Inc presents</div>
+  <h1>FredRock Writers Room</h1>
+  <p class="premise">The unofficial series development room — where Frederick's stories become television.</p>
+</header>
+
+<main class="shell">
+  <div id="fatal"></div>
+  <div id="nudge-banner"></div>
+
+  <div class="topbar">
+    <span class="who" id="who-line">…</span>
+    <div id="progress-glance"></div>
+    <span class="spacer"></span>
+    <div class="bell-wrap">
+      <button id="notif-bell" aria-label="Notifications">🔔</button>
+      <div id="notif-panel"></div>
+    </div>
+    <button class="btn small ghost" id="signout-btn">Sign out</button>
+  </div>
+
+  <nav class="tabs" id="tabs" aria-label="Room sections"></nav>
+
+  <!-- 1. QUESTIONS -->
+  <section class="tab-panel" id="tab-questions">
+    <h2>Question Rounds</h2>
+    <p class="muted">Answer in your own words. Drafts autosave as you type. Toggle "Share with room" to let others read an answer.</p>
+    <div id="questions-list"></div>
+  </section>
+
+  <!-- 2. VOICE STUDIO -->
+  <section class="tab-panel" id="tab-voice" style="display:none">
+    <h2>Voice Studio</h2>
+    <p class="muted">Tell it out loud — some stories live in the voice first. Live transcription runs while you record (Chrome / Edge); everywhere else, type or paste your transcript after.</p>
+    <div id="vs-support-note" class="support-note"></div>
+    <div class="vs-stage">
+      <div id="vs-timer">00:00</div>
+      <button class="btn" id="vs-record">🎙 Record</button>
+      <div id="vs-status" style="margin-top:10px">ready</div>
+    </div>
+    <div class="field" style="margin-top:16px">
+      <label for="vs-question">Link to a question (optional)</label>
+      <select id="vs-question"></select>
+    </div>
+    <div class="field">
+      <label for="vs-transcript">Transcript (live, or type/paste your own)</label>
+      <textarea id="vs-transcript" placeholder="Your words will appear here as you speak…"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn small" id="vs-save-transcript">Save transcript to latest recording</button>
+    </div>
+    <h3 style="margin-top:26px">My recordings</h3>
+    <div id="my-recordings"></div>
+  </section>
+
+  <!-- 3. SCRIPT STUDIO -->
+  <section class="tab-panel" id="tab-script" style="display:none">
+    <h2>Script Studio</h2>
+    <p class="muted">Built on <strong>The FredRock Format</strong> — a Snowfall-style structure (Singleton / Amadio / Andron): premise, engine, three POV threads, five acts. Fill it in; it saves as you go.</p>
+    <div class="studio-toolbar">
+      <select id="studio-select" aria-label="Choose script"></select>
+      <button class="btn small ghost" id="studio-new">+ New script</button>
+      <span class="spacer"></span>
+      <span class="muted" id="studio-words">0 words</span>
+    </div>
+    <div class="field">
+      <label for="studio-title">Title</label>
+      <input type="text" id="studio-title" placeholder="Episode title">
+    </div>
+    <div class="field">
+      <label for="studio-logline">Logline</label>
+      <input type="text" id="studio-logline" placeholder="One line that sells this episode">
+    </div>
+    <label class="share-toggle"><input type="checkbox" id="studio-share"> Share with room</label>
+    <div id="studio-bible"></div>
+    <div id="studio-acts"></div>
+    <div id="studio-characters"></div>
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn" id="studio-save">💾 Save script</button>
+      <span class="muted" id="studio-status"></span>
+    </div>
+  </section>
+
+  <!-- 4. WRITING COACH -->
+  <section class="tab-panel" id="tab-coach" style="display:none">
+    <h2>Writing Coach</h2>
+    <p class="muted">Four $0 tools that run right in your browser — no key, no cost. Pick a tool, type, run.</p>
+    <div id="coach-ai-status" class="support-note"></div>
+    <div class="coach-tools">
+      <button class="coach-tool active" data-coach-tool="expand" data-placeholder="A character, a place, or a moment — a line or two…">Expand a prompt</button>
+      <button class="coach-tool" data-coach-tool="beats" data-placeholder="Your episode idea in a line or two…">Beat-sheet my episode</button>
+      <button class="coach-tool" data-coach-tool="dialogue" data-placeholder="Paste dialogue or a scene…">Dialogue polish</button>
+      <button class="coach-tool" data-coach-tool="character" data-placeholder="The character's name…">Character want-vs-need</button>
+      <button class="coach-tool" data-coach-tool="check" data-placeholder="Paste your answer here…">Check my answer</button>
+    </div>
+    <div class="field" id="coach-question-wrap" style="display:none">
+      <label for="coach-question">Which question is this answer for?</label>
+      <select id="coach-question"></select>
+    </div>
+    <div class="field">
+      <label for="coach-input">Input — <span id="coach-tool-name">Expand a prompt</span></label>
+      <textarea id="coach-input" rows="6" placeholder="A character, a place, or a moment — a line or two…"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="coach-run">Run local coach (free)</button>
+      <button class="btn ghost" id="coach-ask-ai">Ask Connect AI</button>
+    </div>
+    <div class="field" style="margin-top:14px">
+      <label>Output</label>
+      <div id="coach-output">Your coach's notes will appear here.</div>
+    </div>
+  </section>
+
+  <!-- 5. ROOM -->
+  <section class="tab-panel" id="tab-room" style="display:none">
+    <h2>The Room — shared work</h2>
+    <p class="muted">What other writers have chosen to share. Read-only — their words, their credit.</p>
+    <div id="room-list"></div>
+  </section>
+
+  <!-- 6. RESOURCES -->
+  <section class="tab-panel" id="tab-resources" style="display:none">
+    <h2>Resources</h2>
+    <p class="muted">Guides from the room — the format, recording tips, craft notes.</p>
+    <div id="resources-list"></div>
+  </section>
+
+  <!-- 7. HELP -->
+  <section class="tab-panel" id="tab-help" style="display:none">
+    <h2>Help — how to use the room</h2>
+    <p class="muted">Everything below is written in plain words. If you can read this, you can use the room.</p>
+    <div id="help-body"></div>
+  </section>
+</main>
+
+<footer class="foot">FREDROCK WRITERS ROOM · CUMULATIVE WEB INC</footer>
+
+<script src="js/writer.js"></script>
+</body>
+</html>
