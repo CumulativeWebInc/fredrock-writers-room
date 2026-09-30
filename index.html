@@ -29,7 +29,12 @@
   <!-- STEP 1: invite code -->
   <section id="step-code" class="form-card">
     <h2>Enter the room</h2>
-    <p class="muted">This is a private writers room. Enter the invite code you received.</p>
+    <p class="muted"><strong>First time here?</strong> It's 3 easy steps:</p>
+    <ol class="steps-list">
+      <li>Type your <strong>invite code</strong> in the box below.</li>
+      <li>Tap the <strong>Enter →</strong> button.</li>
+      <li>On the next screen, fill in the boxes to create your account — then you're in.</li>
+    </ol>
     <div class="field">
       <label for="invite-code">Invite code</label>
       <input type="text" id="invite-code" placeholder="e.g. X7KQ2M9P" autocomplete="off" style="text-transform:uppercase">
@@ -37,14 +42,14 @@
     <div class="error-text" id="code-error"></div>
     <button class="btn" id="code-enter" style="width:100%">Enter →</button>
     <p class="center" style="margin-top:14px">
-      <button class="linklike" id="show-signin">Already have an account? Sign in</button>
+      <button class="linklike" id="show-signin">Been here before? Sign in (no code needed)</button>
     </p>
   </section>
 
   <!-- STEP 2: signup -->
   <section id="step-signup" class="form-card" style="display:none">
     <h2>Claim your seat</h2>
-    <p class="muted">Code accepted. Create your writer account.</p>
+    <p class="muted">✅ Code accepted — <strong>last step:</strong> fill in the 3 boxes below, then tap <strong>“Claim invite &amp; enter →”</strong>.</p>
     <div class="field">
       <label for="su-name">Display name</label>
       <input type="text" id="su-name" placeholder="How should the room know you?">
@@ -59,6 +64,7 @@
     </div>
     <div class="error-text" id="signup-error"></div>
     <button class="btn" id="signup-btn" style="width:100%">Claim invite &amp; enter →</button>
+    <p class="center muted" style="font-size:13px;margin-top:10px">Used this email in the room before? Tap the button anyway — the next screen will sign you in and attach your code.</p>
     <p class="center" style="margin-top:14px">
       <button class="linklike" id="back-to-code">← Back</button>
     </p>
@@ -67,7 +73,7 @@
   <!-- SIGN IN (returning users) -->
   <section id="step-signin" class="form-card" style="display:none">
     <h2>Welcome back</h2>
-    <p class="muted">Sign in to the writers room.</p>
+    <p class="muted">Sign in with the email and password you used before. No invite code needed.</p>
     <div class="field">
       <label for="si-email">Email</label>
       <input type="email" id="si-email" placeholder="you@example.com">
