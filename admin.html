@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FredRock Writers Room — Admin</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/coach.js"></script>
+</head>
+<body>
+
+<header class="brand-bar">
+  <div class="kicker">Cumulative Web Inc presents</div>
+  <h1>FredRock Writers Room</h1>
+  <p class="premise">Room control — writers, questions, metrics, nudges.</p>
+</header>
+
+<main class="shell">
+  <div id="fatal"></div>
+
+  <div class="topbar">
+    <span class="who">Room control</span>
+    <span class="spacer"></span>
+    <a class="btn small ghost" href="writer.html" style="text-decoration:none">View writer room →</a>
+    <button class="btn small ghost" id="signout-btn">Sign out</button>
+  </div>
+
+  <nav class="tabs" id="tabs" aria-label="Admin sections"></nav>
+
+  <!-- 1. DASHBOARD -->
+  <section class="tab-panel" id="tab-dashboard">
+    <h2>Dashboard</h2>
+    <div class="stat-cards" id="dash-cards"></div>
+
+    <div class="qcard" id="dash-group-wrap">
+      <h4>Room progress — the whole group</h4>
+      <div id="dash-group-progress"></div>
+    </div>
+
+    <h3>Per-writer output</h3>
+    <div class="qcard">
+      <h4>Questions answered</h4><div id="chart-answered"></div>
+    </div>
+    <div class="qcard">
+      <h4>Words written</h4><div id="chart-words"></div>
+    </div>
+    <div class="qcard">
+      <h4>Recordings</h4><div id="chart-recordings"></div>
+    </div>
+    <div class="qcard">
+      <h4>Transcripts</h4><div id="chart-transcripts"></div>
+    </div>
+    <div class="qcard">
+      <h4>Scripts</h4><div id="chart-scripts"></div>
+    </div>
+
+    <h3>Writers</h3>
+    <p class="muted">Rows highlighted in red are stale — past the nudge threshold.</p>
+    <table class="data">
+      <thead><tr><th>Writer</th><th>Progress</th><th>Answers</th><th>Words</th><th>Recordings</th><th>Transcripts</th><th>Scripts</th><th>Last active</th></tr></thead>
+      <tbody id="dash-writers"></tbody>
+    </table>
+
+    <div id="dash-completion"></div>
+  </section>
+
+  <!-- 2. WRITERS & INVITES -->
+  <section class="tab-panel" id="tab-writers" style="display:none">
+    <h2>Writers &amp; invites</h2>
+
+    <div class="qcard">
+      <h3>Generate invite codes</h3>
+      <div class="field" style="max-width:200px">
+        <label for="gen-codes-n">How many codes?</label>
+        <input type="number" id="gen-codes-n" value="10" min="1" max="50">
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="gen-codes-btn">Generate codes</button>
+        <span class="muted" id="gen-codes-status"></span>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="gen-codes-out">New codes (copy &amp; send)</label>
+        <textarea id="gen-codes-out" rows="4" readonly placeholder="Generated codes appear here…"></textarea>
+      </div>
+    </div>
+
+    <div class="qcard">
+      <h3>Unclaimed codes</h3>
+      <div id="unclaimed-codes"></div>
+    </div>
+
+    <h3>Writers</h3>
+    <table class="data">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last active</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="writers-table"></tbody>
+    </table>
+  </section>
+
+  <!-- 3. QUESTION SETS -->
+  <section class="tab-panel" id="tab-qsets" style="display:none">
+    <h2>Question Sets</h2>
+    <p class="muted">Rounds are drafts until published. Publish when a round is ready for the room.</p>
+    <div class="btn-row" style="margin-bottom:14px">
+      <button class="btn" id="add-round-btn">+ Add Round</button>
+    </div>
+    <div id="sets-list"></div>
+  </section>
+
+  <!-- 4. NUDGES -->
+  <section class="tab-panel" id="tab-nudges" style="display:none">
+    <h2>Nudges</h2>
+    <div class="qcard">
+      <h3>Inactivity threshold</h3>
+      <div class="field" style="max-width:200px">
+        <label for="nudge-days-input">Nudge after (days)</label>
+        <input type="number" id="nudge-days-input" value="3" min="1" max="60">
+      </div>
+      <div class="btn-row">
+        <button class="btn small" id="save-nudge-days">Save threshold</button>
+        <span class="muted" id="nudge-days-status"></span>
+      </div>
+    </div>
+    <h3>Writers past the threshold</h3>
+    <div id="stale-list"></div>
+    <div class="field" style="margin-top:16px">
+      <label for="nudge-copy">Last nudge message (copy for email / text — email sending is not wired; nudges are in-app)</label>
+      <textarea id="nudge-copy" rows="4" readonly style="display:none"></textarea>
+    </div>
+  </section>
+
+  <!-- 5. RESOURCES -->
+  <section class="tab-panel" id="tab-resources" style="display:none">
+    <h2>Resources</h2>
+    <p class="muted">Guides the writers see under Resources — the format doc, recording tips, craft notes.</p>
+    <div class="btn-row" style="margin-bottom:14px">
+      <button class="btn" id="add-resource-btn">+ Add resource</button>
+    </div>
+    <div id="resources-admin"></div>
+  </section>
+
+  <!-- 6. AI / SETTINGS -->
+  <section class="tab-panel" id="tab-ai" style="display:none">
+    <h2>AI / Settings</h2>
+    <div class="qcard">
+      <h3>Connect AI</h3>
+      <p class="muted">Any OpenAI-compatible chat-completions endpoint. The Writing Coach calls it when configured; the local $0 tools always work.</p>
+      <div id="ai-local-note" class="support-note warn"></div>
+      <div class="field">
+        <label for="ai-endpoint">Endpoint base URL</label>
+        <input type="url" id="ai-endpoint" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="field">
+        <label for="ai-model">Model</label>
+        <input type="text" id="ai-model" placeholder="gpt-4o-mini">
+      </div>
+      <div class="field">
+        <label for="ai-key">API key</label>
+        <input type="password" id="ai-key" placeholder="sk-…" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button class="btn small" id="ai-save">Save</button>
+        <button class="btn small ghost" id="ai-test">Test connection</button>
+        <button class="btn small danger ghost" id="ai-clear">Clear</button>
+      </div>
+      <div id="ai-status" class="support-note" style="margin-top:12px"></div>
+    </div>
+    <div class="qcard">
+      <h3>App settings (database)</h3>
+      <div id="app-settings-list"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">FREDROCK WRITERS ROOM · CUMULATIVE WEB INC</footer>
+
+<script src="js/admin.js"></script>
+</body>
+</html>
