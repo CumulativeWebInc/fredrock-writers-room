@@ -256,6 +256,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 12px; padding:
 .mini-progress { width: 110px; height: 8px; background: #241f18; border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
 .mini-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); }
 
+/* numbered step guides on the entry page */
+.steps-list { margin: 0 0 16px 22px; padding: 0; }
+.steps-list li { margin: 6px 0; line-height: 1.45; }
+
 /* question card head buttons + check output */
 .qcard-head { position: relative; }
 .qcard-head h4 { padding-right: 0; }
