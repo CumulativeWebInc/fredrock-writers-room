@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FredRock Writers Room — Enter</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+</head>
+<body>
+
+<header class="brand-bar">
+  <div class="kicker">Cumulative Web Inc presents</div>
+  <h1>FredRock Writers Room</h1>
+  <p class="premise">The unofficial series development room — where Frederick's stories become television.</p>
+  <div class="cwi">CWI · ORIGINAL DEVELOPMENT</div>
+</header>
+
+<main class="shell">
+
+  <div id="fatal"></div>
+  <div id="not-configured" style="display:none" class="support-note warn">
+    Supabase isn't connected yet. <a href="setup.html" style="color:var(--accent)">Open setup →</a>
+  </div>
+
+  <!-- STEP 1: invite code -->
+  <section id="step-code" class="form-card">
+    <h2>Enter the room</h2>
+    <p class="muted">This is a private writers room. Enter the invite code you received.</p>
+    <div class="field">
+      <label for="invite-code">Invite code</label>
+      <input type="text" id="invite-code" placeholder="e.g. X7KQ2M9P" autocomplete="off" style="text-transform:uppercase">
+    </div>
+    <div class="error-text" id="code-error"></div>
+    <button class="btn" id="code-enter" style="width:100%">Enter →</button>
+    <p class="center" style="margin-top:14px">
+      <button class="linklike" id="show-signin">Already have an account? Sign in</button>
+    </p>
+  </section>
+
+  <!-- STEP 2: signup -->
+  <section id="step-signup" class="form-card" style="display:none">
+    <h2>Claim your seat</h2>
+    <p class="muted">Code accepted. Create your writer account.</p>
+    <div class="field">
+      <label for="su-name">Display name</label>
+      <input type="text" id="su-name" placeholder="How should the room know you?">
+    </div>
+    <div class="field">
+      <label for="su-email">Email</label>
+      <input type="email" id="su-email" placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <label for="su-pass">Password</label>
+      <input type="password" id="su-pass" placeholder="Choose a password (min 6 characters)">
+    </div>
+    <div class="error-text" id="signup-error"></div>
+    <button class="btn" id="signup-btn" style="width:100%">Claim invite &amp; enter →</button>
+    <p class="center" style="margin-top:14px">
+      <button class="linklike" id="back-to-code">← Back</button>
+    </p>
+  </section>
+
+  <!-- SIGN IN (returning users) -->
+  <section id="step-signin" class="form-card" style="display:none">
+    <h2>Welcome back</h2>
+    <p class="muted">Sign in to the writers room.</p>
+    <div class="field">
+      <label for="si-email">Email</label>
+      <input type="email" id="si-email" placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <label for="si-pass">Password</label>
+      <input type="password" id="si-pass" placeholder="Your password">
+    </div>
+    <div class="error-text" id="signin-error"></div>
+    <button class="btn" id="signin-btn" style="width:100%">Sign in →</button>
+    <p class="center" style="margin-top:14px">
+      <button class="linklike" id="back-to-code2">← Have an invite code instead?</button>
+    </p>
+  </section>
+
+</main>
+
+<footer class="foot">FREDROCK WRITERS ROOM · CUMULATIVE WEB INC</footer>
+
+<script>
+(function () {
+  "use strict";
+  var pendingCode = "";
+
+  function show(id) {
+    ["step-code", "step-signup", "step-signin"].forEach(function (s) {
+      document.getElementById(s).style.display = s === id ? "block" : "none";
+    });
+  }
+  function fatal(msg) {
+    var el = document.getElementById("fatal");
+    el.textContent = msg; el.style.display = "block";
+  }
+
+  document.addEventListener("DOMContentLoaded", async function () {
+    if (!FR.isConfigured()) {
+      document.getElementById("not-configured").style.display = "block";
+    }
+    // returning session -> route by role
+    try {
+      var session = await FR.getSession();
+      if (session) {
+        var writer = await FR.getWriter(session);
+        if (writer && writer.is_active !== false) { Auth.routeByRole(writer); return; }
+      }
+    } catch (e) { /* fall through to gate */ }
+
+    document.getElementById("code-enter").addEventListener("click", onCode);
+    document.getElementById("invite-code").addEventListener("keydown", function (e) { if (e.key === "Enter") onCode(); });
+    document.getElementById("signup-btn").addEventListener("click", onSignup);
+    document.getElementById("signin-btn").addEventListener("click", onSignin);
+    document.getElementById("show-signin").addEventListener("click", function () { show("step-signin"); });
+    document.getElementById("back-to-code").addEventListener("click", function () { show("step-code"); });
+    document.getElementById("back-to-code2").addEventListener("click", function () { show("step-code"); });
+  });
+
+  function onCode() {
+    var code = document.getElementById("invite-code").value.trim().toUpperCase();
+    var err = document.getElementById("code-error");
+    err.textContent = "";
+    if (!FR.isConfigured()) { FR.needsSetupPage(); return; }
+    if (!/^[A-Z0-9-]{3,32}$/.test(code)) {
+      err.textContent = "That doesn't look like a valid code — check it and try again.";
+      return;
+    }
+    pendingCode = code;
+    show("step-signup");
+  }
+
+  async function onSignup() {
+    var name = document.getElementById("su-name").value.trim();
+    var email = document.getElementById("su-email").value.trim();
+    var pass = document.getElementById("su-pass").value;
+    var err = document.getElementById("signup-error");
+    err.textContent = "";
+    if (!name) { err.textContent = "Give us a display name."; return; }
+    if (!email || email.indexOf("@") < 0) { err.textContent = "Enter a valid email."; return; }
+    if (!pass || pass.length < 6) { err.textContent = "Password must be at least 6 characters."; return; }
+    var b = document.getElementById("signup-btn");
+    b.disabled = true; b.textContent = "Claiming…";
+    try {
+      var res = await Auth.signUp(name, email, pass, pendingCode);
+      if (res.needsConfirmation) {
+        err.textContent = "Account created — check your email for a confirmation link, then sign in.";
+        show("step-signin");
+        return;
+      }
+      Auth.routeByRole(res.writer);
+    } catch (e) {
+      err.textContent = friendly(e);
+      b.disabled = false; b.textContent = "Claim invite & enter →";
+    }
+  }
+
+  async function onSignin() {
+    var email = document.getElementById("si-email").value.trim();
+    var pass = document.getElementById("si-pass").value;
+    var err = document.getElementById("signin-error");
+    err.textContent = "";
+    var b = document.getElementById("signin-btn");
+    b.disabled = true; b.textContent = "Signing in…";
+    try {
+      var res = await Auth.signIn(email, pass);
+      Auth.routeByRole(res.writer);
+    } catch (e) {
+      err.textContent = friendly(e);
+      b.disabled = false; b.textContent = "Sign in →";
+    }
+  }
+
+  function friendly(e) {
+    var m = (e && e.message) || String(e);
+    if (m === "no-writer-row") return "Signed in, but no writer profile was found. Contact the room admin.";
+    if (m === "account-deactivated") return "This account has been deactivated. Contact the room admin.";
+    if (/invalid/i.test(m) && /code/i.test(m)) return "That invite code is invalid or already claimed.";
+    return m;
+  }
+})();
+</script>
+</body>
+</html>
