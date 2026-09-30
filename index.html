@@ -157,8 +157,41 @@
       }
       Auth.routeByRole(res.writer);
     } catch (e) {
-      err.textContent = friendly(e);
+      var msg = (e && e.message) || String(e);
+      if (/already registered/i.test(msg) && pendingCode) {
+        // Existing account + valid code: offer sign-in & claim instead of a dead end.
+        err.textContent = "You already have an account with this email. ";
+        var link = document.createElement("button");
+        link.className = "linklike";
+        link.style.fontSize = "inherit";
+        link.textContent = "Sign me in & claim this code →";
+        link.addEventListener("click", function () { onSigninAndClaim(email, pass); });
+        err.appendChild(link);
+      } else {
+        err.textContent = friendly(e);
+      }
       b.disabled = false; b.textContent = "Claim invite & enter →";
+    }
+  }
+
+  // Existing user who entered an invite code: sign in, claim the code
+  // (this also upgrades their role, e.g. writer -> admin), then enter.
+  async function onSigninAndClaim(email, pass) {
+    var err = document.getElementById("signup-error");
+    err.textContent = "Signing you in and claiming your code…";
+    try {
+      await Auth.signIn(email, pass);
+      var role = await Auth.claimInvite(pendingCode);
+      if (!role) {
+        err.textContent = "Signed in, but that invite code is invalid or already claimed.";
+        return;
+      }
+      var session = await FR.getSession();
+      var writer = await FR.getWriter(session);
+      if (!writer) { err.textContent = "Signed in, but no writer profile was found."; return; }
+      Auth.routeByRole(writer);
+    } catch (e) {
+      err.textContent = friendly(e);
     }
   }
 
