@@ -41,6 +41,14 @@ and click. Takes about 15 minutes. Everything here is on Supabase's **free tier*
 > add profile photos, answer attachments, and the two new storage buckets.
 > (This also folds in the old `migration-multi-answer.sql`, which new setups
 > never needed — the current `schema.sql` already includes everything.)
+>
+> **Relational questions (2026-09-30):** run
+> `sql/migration-relational-questions-20260930.sql` once in the SQL Editor.
+> It adds the auto-created "How do you know {name}?" question per member
+> (trigger on every new writer + backfill), the "Getting to Know Each Other"
+> round, the `writer_public` directory view, and makes `claim_invite()` also
+> promote an already-existing writers row (so a direct signup who then claims
+> a code gets the code's role).
 
 ## Step 3 — Run the seed data
 
