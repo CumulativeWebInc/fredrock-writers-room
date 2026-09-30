@@ -9,6 +9,7 @@
   var sets = [];            // published question_sets
   var questions = [];       // questions of published sets
   var answers = {};         // question_id -> [answer rows]
+  var directory = {};       // writer_public: id -> {display_name, avatar_url}
   var myScripts = [];
   var myRecordings = [];
   var nudgeDays = 3;
@@ -140,7 +141,23 @@
     (ra.data || []).forEach(function (a) {
       (answers[a.question_id] = answers[a.question_id] || []).push(a);
     });
+    // Public-safe directory (name + photo) so relational questions can show
+    // WHO the question is about. Never exposes emails.
+    try {
+      var rd = await c.from("writer_public").select("id,display_name,avatar_url");
+      directory = {};
+      ((rd && rd.data) || []).forEach(function (w) { directory[w.id] = w; });
+    } catch (e) { directory = {}; }
     renderQuestions();
+  }
+
+  // Relational questions ("How do you know X?") are personal: you never see
+  // the one that is about YOU — everyone else answers it.
+  function visibleQuestions() {
+    if (!me) return questions;
+    return questions.filter(function (q) {
+      return !(q.kind === "relational" && q.subject_writer_id === me.id);
+    });
   }
 
   async function loadScripts() {
@@ -165,12 +182,13 @@
       wrap.innerHTML = '<div class="empty">No question rounds are published yet. Check back soon.</div>';
       return;
     }
+    var vq = visibleQuestions();
     sets.forEach(function (set) {
       var setDiv = document.createElement("div");
       setDiv.className = "qset";
       setDiv.innerHTML = '<h3>' + esc(set.title) + "</h3>" +
         (set.description ? '<p class="muted">' + esc(set.description) + "</p>" : "");
-      var qs = questions.filter(function (q) { return q.set_id === set.id; });
+      var qs = vq.filter(function (q) { return q.set_id === set.id; });
       if (!qs.length) setDiv.innerHTML += '<div class="empty">Questions coming soon.</div>';
       qs.forEach(function (q) { setDiv.appendChild(questionCard(q)); });
       wrap.appendChild(setDiv);
@@ -185,7 +203,17 @@
 
     var head = document.createElement("div");
     head.className = "qcard-head";
-    head.innerHTML = "<h4>" + esc(q.prompt_text) + "</h4>" +
+    // Relational question: show WHO it is about (photo + name chip).
+    var aboutHtml = "";
+    if (q.kind === "relational" && q.subject_writer_id && directory[q.subject_writer_id]) {
+      var subj = directory[q.subject_writer_id];
+      aboutHtml = '<div class="qcard-about">' +
+        (subj.avatar_url
+          ? '<img class="qcard-avatar" src="' + esc(subj.avatar_url) + '" alt="">'
+          : '<span class="qcard-avatar qcard-avatar-fallback">👤</span>') +
+        '<span class="qcard-about-name">About ' + esc(subj.display_name) + "</span></div>";
+    }
+    head.innerHTML = aboutHtml + "<h4>" + esc(q.prompt_text) + "</h4>" +
       (q.help_text ? '<p class="muted">' + esc(q.help_text) + "</p>" : "");
     var headBtns = document.createElement("div");
     headBtns.className = "qcard-head-btns";
@@ -611,7 +639,7 @@ var vs = { recorder: null, stream: null, chunks: [], start: 0, timerInt: null, r
 function initVoiceStudio() {
   var qsel = $("vs-question");
   qsel.innerHTML = '<option value="">— voice note (no question) —</option>';
-  questions.forEach(function (q) {
+  visibleQuestions().forEach(function (q) {
     var o = document.createElement("option");
     o.value = q.id;
     o.textContent = q.prompt_text.slice(0, 70);
@@ -1040,7 +1068,7 @@ function initCoach() {
   var qsel = $("coach-question");
   if (qsel) {
     qsel.innerHTML = "";
-    questions.forEach(function (q) {
+    visibleQuestions().forEach(function (q) {
       var o = document.createElement("option");
       o.value = q.id;
       o.textContent = q.prompt_text.slice(0, 80);
@@ -1210,7 +1238,11 @@ async function loadNotifications() {
 
 function renderProgress() {
   var answeredQs = 0, totalAnswers = 0, totalWords = 0;
+  var vq = visibleQuestions();
+  var vqIds = {};
+  vq.forEach(function (q) { vqIds[q.id] = true; });
   Object.keys(answers).forEach(function (k) {
+    if (!vqIds[k]) return;  // skip the relational question about yourself
     var list = answers[k] || [];
     var nonEmpty = list.filter(function (a) { return (a.body_text || "").trim().length > 0; });
     if (nonEmpty.length) answeredQs++;
@@ -1219,7 +1251,7 @@ function renderProgress() {
   });
   var scriptsN = myScripts.length;
   var recsN = myRecordings.length;
-  var totalQ = questions.length;
+  var totalQ = vq.length;
   var el = $("progress-glance");
   el.innerHTML =
     "<span>📝 " + answeredQs + "/" + totalQ + " questions</span>" +
@@ -1280,6 +1312,11 @@ function renderHelp() {
       "<ol><li>On any question, tap <strong>🔍 Check my answer</strong>.</li>" +
       "<li>The coach shows what your answer covers and what's missing — and asks you <strong>specific follow-up questions</strong> to draw out more.</li>" +
       "<li>Answer the follow-ups right in the box to strengthen the story.</li></ol>") +
+    helpCard("Getting to Know Each Other",
+      "<ol><li>Under the <strong>Questions</strong> tab you'll see a round called <strong>“Getting to Know Each Other.”</strong></li>" +
+      "<li>Every person in the room gets one question there: <strong>“How do you know {their name}?”</strong> — with their photo on it.</li>" +
+      "<li>You answer it for <strong>everyone else</strong> — tell how you met them and what they mean to you. You won't see the one about you.</li>" +
+      "<li>When someone new joins, their question appears automatically for the whole room.</li></ol>") +
     helpCard("Moving between questions",
       "<ol><li>All questions are on the <strong>Questions</strong> tab — just scroll.</li>" +
       "<li>Your progress at the top shows how many questions you've answered.</li>" +
