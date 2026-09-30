@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FredRock Writers Room — Setup</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/db.js"></script>
+</head>
+<body>
+
+<header class="brand-bar">
+  <div class="kicker">Cumulative Web Inc presents</div>
+  <h1>FredRock Writers Room</h1>
+  <p class="premise">First-run setup — connect the room to its database.</p>
+</header>
+
+<main class="shell">
+  <div id="fatal"></div>
+
+  <section class="form-card">
+    <h2>Connect Supabase</h2>
+    <p class="muted">
+      Paste the <strong>Project URL</strong> and <strong>anon public key</strong> from your Supabase
+      project (Project Settings → API). They are stored in <em>this browser's localStorage only</em> —
+      never in the code, never on a server. See <code>SUPABASE-SETUP.md</code> for the full walkthrough.
+    </p>
+    <div class="field">
+      <label for="sb-url">Supabase Project URL</label>
+      <input type="url" id="sb-url" placeholder="https://xyzcompany.supabase.co">
+    </div>
+    <div class="field">
+      <label for="sb-key">Supabase anon public key</label>
+      <input type="text" id="sb-key" placeholder="eyJhbGciOi…" autocomplete="off">
+    </div>
+    <div class="error-text" id="setup-error"></div>
+    <div class="ok-text" id="setup-ok"></div>
+    <div class="btn-row">
+      <button class="btn" id="setup-save">Save &amp; test connection</button>
+      <a class="btn ghost" href="index.html" id="setup-goto" style="display:none;text-decoration:none">Enter the room →</a>
+    </div>
+    <p class="muted" style="margin-top:14px;font-size:13px">
+      Already configured? <a href="index.html" style="color:var(--accent)">Go to the invite gate →</a><br>
+      <button class="linklike" id="setup-clear">Clear saved keys</button>
+    </p>
+  </section>
+</main>
+
+<footer class="foot">FREDROCK WRITERS ROOM · CUMULATIVE WEB INC</footer>
+
+<script>
+(function () {
+  "use strict";
+  document.addEventListener("DOMContentLoaded", function () {
+    var urlEl = document.getElementById("sb-url");
+    var keyEl = document.getElementById("sb-key");
+    var cfg = FR.getSupabaseConfig();
+    urlEl.value = cfg.url; keyEl.value = cfg.key;
+
+    var notice = new URLSearchParams(window.location.search).get("notice");
+    if (notice === "not-configured") {
+      document.getElementById("fatal").style.display = "block";
+      document.getElementById("fatal").textContent =
+        "The room isn't connected to a database yet. Paste your Supabase URL and anon key below.";
+    }
+
+    document.getElementById("setup-save").addEventListener("click", async function () {
+      var url = urlEl.value.trim().replace(/\/$/, "");
+      var key = keyEl.value.trim();
+      var err = document.getElementById("setup-error");
+      var ok = document.getElementById("setup-ok");
+      err.textContent = ""; ok.textContent = "";
+      if (!/^https:\/\/.+\.supabase\.co$/.test(url) && url.indexOf("http") !== 0) {
+        err.textContent = "That doesn't look like a Supabase project URL.";
+        return;
+      }
+      if (key.length < 20) { err.textContent = "That key looks too short — paste the full anon key."; return; }
+      FR.store.set("fr_supabase_url", url);
+      FR.store.set("fr_supabase_anon_key", key);
+      FR.resetClient();
+      err.textContent = ""; ok.textContent = "Keys saved. Testing connection…";
+      try {
+        var client = FR.db();
+        var r = await client.auth.getSession(); // cheap round-trip; works even logged out
+        if (r.error) throw r.error;
+        ok.textContent = "✓ Connected to " + url;
+        document.getElementById("setup-goto").style.display = "inline-block";
+      } catch (e) {
+        ok.textContent = "";
+        err.textContent = "Saved, but the connection test failed: " + (e.message || e) +
+          " — check the URL and key.";
+      }
+    });
+
+    document.getElementById("setup-clear").addEventListener("click", function () {
+      FR.store.del("fr_supabase_url");
+      FR.store.del("fr_supabase_anon_key");
+      FR.resetClient();
+      urlEl.value = ""; keyEl.value = "";
+      document.getElementById("setup-ok").textContent = "Saved keys cleared.";
+    });
+  });
+})();
+</script>
+</body>
+</html>
