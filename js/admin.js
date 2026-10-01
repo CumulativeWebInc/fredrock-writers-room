@@ -128,7 +128,7 @@
     var rw = await c.from("writers").select("*").order("display_name");
     writersCache = (!rw.error && rw.data) ? rw.data : [];
 
-    var ra = await c.from("answers").select("id,writer_id,word_count,body_text");
+    var ra = await c.from("answers").select("id,writer_id,question_id,word_count,body_text");
     var rrec = await c.from("recordings").select("id,writer_id,transcript_text");
     var rsc = await c.from("scripts").select("id,writer_id,word_count");
 
@@ -214,7 +214,9 @@
     per.forEach(function (p) {
       var d = document.createElement("div");
       mb.appendChild(d);
-      Charts.metricBar(d, p.writer.display_name, p.answered, publishedQuestionCount);
+      // completion = UNIQUE questions answered (not total answer rows — multiple
+      // answers per question are allowed) of published questions
+      Charts.metricBar(d, p.writer.display_name, p.questionsAnswered, publishedQuestionCount);
     });
   }
 
