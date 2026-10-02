@@ -129,7 +129,7 @@
     writersCache = (!rw.error && rw.data) ? rw.data : [];
 
     var ra = await c.from("answers").select("id,writer_id,question_id,word_count,body_text");
-    var rrec = await c.from("recordings").select("id,writer_id,transcript_text");
+    var rrec = await c.from("recordings").select("id,writer_id,transcript_text,word_count");
     var rsc = await c.from("scripts").select("id,writer_id,word_count");
 
     var answers = (!ra.error && ra.data) ? ra.data : [];
@@ -137,6 +137,7 @@
     var scripts = (!rsc.error && rsc.data) ? rsc.data : [];
 
     var totalWords = answers.reduce(function (s, a) { return s + (a.word_count || 0); }, 0) +
+                     recordings.reduce(function (s, r) { return s + (r.word_count || 0); }, 0) +
                      scripts.reduce(function (s, x) { return s + (x.word_count || 0); }, 0);
     var transcripts = recordings.filter(function (r) { return (r.transcript_text || "").trim().length > 0; }).length;
 
@@ -164,6 +165,7 @@
       wa.forEach(function (a) { uniqQ[a.question_id] = 1; });
       var ww = wa.reduce(function (s, a) { return s + (a.word_count || 0); }, 0);
       var wrec = recordings.filter(function (r) { return r.writer_id === w.id; });
+      ww += wrec.reduce(function (s, r) { return s + (r.word_count || 0); }, 0);
       var wtr = wrec.filter(function (r) { return (r.transcript_text || "").trim().length > 0; });
       var wsc = scripts.filter(function (s) { return s.writer_id === w.id; });
       return { writer: w, answered: wa.length, questionsAnswered: Object.keys(uniqQ).length, words: ww, recordings: wrec.length, transcripts: wtr.length, scripts: wsc.length };
