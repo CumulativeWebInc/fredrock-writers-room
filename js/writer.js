@@ -581,7 +581,8 @@
       storage_path: path,
       duration_sec: durationSec || null,
       transcript_text: transcriptText || "",
-      transcript_source: transcriptSource || "web-speech"
+      transcript_source: transcriptSource || "web-speech",
+      word_count: words(transcriptText)
     }).select().single();
     if (ins.error) throw ins.error;
     await FR.logActivity(me.id, "recording_save", { recording_id: recId, duration_sec: durationSec, question_id: questionId });
@@ -607,8 +608,10 @@
       var d = document.createElement("div");
       d.className = "rec-item";
       var q = questions.find(function (x) { return x.id === rec.question_id; });
+      var wcLabel = (rec.word_count ? rec.word_count + " words" : "");
+      var durLabel = (rec.duration_sec ? " · " + rec.duration_sec + "s" : "") + (wcLabel ? " · " + wcLabel : "");
       d.innerHTML = '<div class="rec-item-head"><strong>' + (q ? esc(q.prompt_text.slice(0, 60)) : "Voice note") + "</strong>" +
-        '<span class="muted">' + timeAgo(rec.created_at) + (rec.duration_sec ? " · " + rec.duration_sec + "s" : "") + "</span></div>" +
+        '<span class="muted">' + timeAgo(rec.created_at) + durLabel + "</span></div>" +
         (rec.transcript_text ? '<p class="transcript">' + esc(rec.transcript_text.slice(0, 220)) + (rec.transcript_text.length > 220 ? "…" : "") + "</p>" : '<p class="muted">No transcript.</p>');
       var play = document.createElement("button");
       play.className = "btn small";
@@ -647,6 +650,8 @@ function initVoiceStudio() {
   });
   $("vs-record").addEventListener("click", vsToggle);
   $("vs-save-transcript").addEventListener("click", vsSaveTranscript);
+  $("vs-transcript").addEventListener("input", updateVsWords);
+  updateVsWords();
   renderVsSupport();
 }
 
@@ -703,6 +708,14 @@ function vsTick() {
   $("vs-timer").textContent = (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec;
 }
 
+/* Live word counter for the Voice Studio transcript. Updates as live speech
+ * lands in the box and as the writer types or pastes — the same words() rule
+ * used everywhere else, so "words" always means the same thing. */
+function updateVsWords() {
+  var el = $("vs-words");
+  if (el) el.textContent = words($("vs-transcript").value) + " words";
+}
+
 function vsStartSpeech() {
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
@@ -716,6 +729,7 @@ function vsStartSpeech() {
       for (var i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
       vs.transcript = text;
       $("vs-transcript").value = text;
+      updateVsWords();
     };
     rec.onerror = function () { /* keep recording; manual transcript is the fallback */ };
     rec.onend = function () {
@@ -763,11 +777,12 @@ function vsSaveTranscript() {
   if (!text) { alert("Nothing to save — the transcript box is empty."); return; }
   if (!myRecordings.length) { alert("Record something first, then save the transcript."); return; }
   var latest = myRecordings[0];
-  FR.db().from("recordings").update({ transcript_text: text, transcript_source: "manual" }).eq("id", latest.id)
+  FR.db().from("recordings").update({ transcript_text: text, transcript_source: "manual", word_count: words(text) }).eq("id", latest.id)
     .then(function (r) {
       if (r.error) throw r.error;
       latest.transcript_text = text;
       latest.transcript_source = "manual";
+      latest.word_count = words(text);
       $("vs-status").textContent = "transcript saved ✓";
       FR.logActivity(me.id, "transcript_save", { recording_id: latest.id, words: words(text) });
       renderMyRecordings();
@@ -1249,6 +1264,7 @@ function renderProgress() {
     totalAnswers += nonEmpty.length;
     nonEmpty.forEach(function (a) { totalWords += (a.word_count || 0); });
   });
+  (myRecordings || []).forEach(function (r) { totalWords += (r.word_count || 0); });
   var scriptsN = myScripts.length;
   var recsN = myRecordings.length;
   var totalQ = vq.length;
